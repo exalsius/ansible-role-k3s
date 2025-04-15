@@ -1,0 +1,11 @@
+---
+- name: Download K3s binary on all nodes
+  include_tasks: download.yml
+
+- name: Configure control plane nodes
+  include_tasks: control.yml
+  when: "'control' in group_names"
+
+- name: Configure worker nodes
+  include_tasks: worker.yml
+  when: "'worker' in group_names"

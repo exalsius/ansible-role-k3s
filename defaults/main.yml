@@ -1,0 +1,18 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for ansible-role-k3s
+k3s_version: "v1.32.2+k3s1"
+
+# Systemd directory, where the k3s service file will be installed
+systemd_dir: /etc/systemd/system
+
+# Can be generated with e.g.:
+# - openssl rand -base64 64
+# - pwgen -s 64 1
+token: "changeme!"
+
+ansible_user: root
+
+install_name: "k3s"
+
+fetch_dir_path: "./fetched"

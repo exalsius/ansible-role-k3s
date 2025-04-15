@@ -1,0 +1,78 @@
+---
+- name: Copy K3s service file
+  register: k3s_service
+  ansible.builtin.template:
+    src: k3s-control.service.j2
+    dest: "{{ systemd_dir }}/k3s.service"
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Create rancher k3s directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+
+- name: Copy K3s registry configuration when dockerhub_username and dockerhub_token is defined
+  ansible.builtin.template:
+    src: registries.yaml.j2
+    dest: /etc/rancher/k3s/registries.yaml
+  when:
+    - dockerhub_username is defined
+    - dockerhub_token is defined
+
+- name: Enable and check K3s service
+  ansible.builtin.systemd:
+    name: k3s
+    daemon_reload: true
+    state: started
+    enabled: true
+
+- name: Set kubeconfig path using ansible_env.HOME
+  set_fact:
+    kubeconfig_path: "{{ ansible_env.HOME }}/.kube"
+
+- name: Create directory .kube
+  ansible.builtin.file:
+    path: "{{ kubeconfig_path }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: 0755
+
+- name: Copy config file to user home directory
+  ansible.builtin.copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "{{ kubeconfig_path }}/config"
+    remote_src: true
+    owner: "{{ ansible_user }}"
+
+
+- name: Replace https://localhost:6443 in kubeconfig with host IP
+  ansible.builtin.lineinfile:
+    path: "{{ kubeconfig_path }}/config"
+    regexp: '^(\s*server:\s*)https://localhost:6443'
+    line: '\1https://{{ ansible_host }}:6443'
+    backrefs: true
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+
+- name: Create kubectl symlink
+  ansible.builtin.file:
+    src: /usr/local/bin/k3s
+    dest: /usr/local/bin/kubectl
+    state: link
+
+- name: Create crictl symlink
+  ansible.builtin.file:
+    src: /usr/local/bin/k3s
+    dest: /usr/local/bin/crictl
+    state: link
+
+- name: Download kubeconfig to fetched directory
+  ansible.builtin.fetch:
+    src: "{{ kubeconfig_path }}/config"
+    #dest: "{{ role_path }}/../../../fetched/{{ install_name }}.kubeconfig"
+    dest: "{{ fetch_dir_path }}/{{ install_name }}.kubeconfig"
+    flat: true

@@ -1,0 +1,37 @@
+---
+- name: Verify K3s cluster is operational
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Determine appropriate K3s service name
+      set_fact:
+        k3s_service_name: "{{ 'k3s' if 'control' in group_names else 'k3s-node' }}"
+
+    - name: Check if K3s service is active
+      ansible.builtin.systemd:
+        name: "{{ k3s_service_name }}"
+        state: started
+      register: k3s_service_status
+
+    - name: Assert K3s service is running
+      ansible.builtin.assert:
+        that:
+          - k3s_service_status.status.ActiveState == "active"
+        fail_msg: "K3s service is not running as expected."
+        success_msg: "K3s service is running."
+
+    - name: Retrieve Kubernetes nodes (only on control nodes)
+      ansible.builtin.command: k3s kubectl get nodes --no-headers
+      register: kubectl_nodes
+      changed_when: false
+      failed_when: "'NotReady' in kubectl_nodes.stdout"
+      when: "'control' in group_names"
+
+    - name: Assert all nodes are Ready (only on control nodes)
+      ansible.builtin.assert:
+        that:
+          - "'NotReady' not in kubectl_nodes.stdout"
+        fail_msg: "One or more nodes are not in Ready state."
+        success_msg: "All nodes are in Ready state."
+      when: "'control' in group_names"
