@@ -5,3 +5,5 @@
 *.retry
 
 .venv
+
+fetched/

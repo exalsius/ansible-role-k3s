@@ -4,14 +4,14 @@
   gather_facts: true
   become: true
   vars:
-    endpoint_ip: "{{ hostvars['control-node']['ansible_default_ipv4']['address'] }}"
     master_ip: "{{ hostvars['control-node']['ansible_default_ipv4']['address'] }}"
     extra_server_args: "--snapshotter=native"
     extra_agent_args: "--snapshotter=native"
+    fetch_dir_path: "{{ role_path }}/fetched"
 
   tasks:
     - name: Gather facts
       ansible.builtin.setup:
-      
+
   roles:
     - role: exalsius.k3s
