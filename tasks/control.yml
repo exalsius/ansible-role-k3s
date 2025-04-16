@@ -46,17 +46,24 @@
     dest: "{{ kubeconfig_path }}/config"
     remote_src: true
     owner: "{{ ansible_user }}"
+  register: copy_result
+  when: not lookup('ansible.builtin.file', kubeconfig_path + '/config', errors='ignore')
+  changed_when: false
 
+- name: Check if kubeconfig contains localhost
+  ansible.builtin.shell: grep -q 'https://127.0.0.1:6443' "{{ kubeconfig_path }}/config"
+  register: kubeconfig_needs_fixing
+  ignore_errors: true
+  changed_when: false
 
-- name: Replace https://localhost:6443 in kubeconfig with host IP
-  ansible.builtin.lineinfile:
+- name: Replace localhost server address in kubeconfig
+  ansible.builtin.replace:
     path: "{{ kubeconfig_path }}/config"
-    regexp: '^(\s*server:\s*)https://localhost:6443'
-    line: '\1https://{{ ansible_host }}:6443'
-    backrefs: true
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: '0600'
+    regexp: 'https://127.0.0.1:6443'
+    replace: "https://{{ ansible_host }}:6443"
+    backup: true
+  when: kubeconfig_needs_fixing.rc == 0
+  changed_when: false
 
 - name: Create kubectl symlink
   ansible.builtin.file:
@@ -73,6 +80,5 @@
 - name: Download kubeconfig to fetched directory
   ansible.builtin.fetch:
     src: "{{ kubeconfig_path }}/config"
-    #dest: "{{ role_path }}/../../../fetched/{{ install_name }}.kubeconfig"
     dest: "{{ fetch_dir_path }}/{{ install_name }}.kubeconfig"
     flat: true
