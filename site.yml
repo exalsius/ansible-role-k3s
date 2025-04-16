@@ -1,0 +1,8 @@
+---
+- name: Install k3s
+  hosts: all
+  become: true
+  vars:
+    master_ip: "{{ hostvars[groups['control'][0]]['ansible_host'] }}"
+  roles:
+    - exalsius.k3s
