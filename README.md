@@ -1,38 +1,114 @@
-Role Name
+ansible-role-k3s
 =========
 
-A brief description of the role goes here.
+This Ansible role installs and configures a multi-node K3s Kubernetes cluster on remote machines.
+It supports setting up both control plane and worker nodes, enabling the deployment of lightweight Kubernetes environments.
 
 Requirements
 ------------
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+Install the required Python dependencies using either pip or uv:
+
+```bash
+# with pip
+pip install -r requirements.txt
+
+# or with uv
+uv pip install -r requirements.txt
+```
+
+Usage
+------------
+Inventory example
+
+```ini
+[all:vars]
+ansible_user=ubuntu
+fetch_dir_path=./fetched
+
+[control]
+control-node ansible_host=1.1.1.1
+
+[worker]
+worker-node ansible_host=2.2.2.2
+```
+
+Example playbook
+
+```yml
+---
+- name: Install k3s
+  hosts: all
+  become: true
+  vars:
+    master_ip: "{{ hostvars[groups['control'][0]]['ansible_host'] }}"
+  roles:
+    - exalsius.k3s
+```
+Save this as install-k3s.yml and run it with:
+
+```bash
+ansible-playbook -i inventory.ini install-k3s.yml
+```
 
 Role Variables
 --------------
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+| Variable         | Default Value              | Description                                                                 |
+|------------------|----------------------------|-----------------------------------------------------------------------------|
+| `k3s_version`    | `"v1.32.2+k3s1"`           | Version of K3s to install.                                                 |
+| `systemd_dir`    | `/etc/systemd/system`      | Path to the systemd unit file directory.                                   |
+| `token`          | `"changeme!"`              | Shared token used to join worker nodes to the cluster.                     |
+| `ansible_user`   | `root`                     | SSH user used to connect to remote hosts.                                  |
+| `install_name`   | `"k3s"`                    | Name of the K3s service (can be customized for variants).                  |
+| `fetch_dir_path` | `"./fetched"`              | Local directory to fetch cluster-related files from remote control nodes.  |
 
-Dependencies
-------------
+Using This Role as a Dependency
+--------------
+To use the role from in another project, add it to your `requirements.yml` like this:
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+```yaml
+# requirements.yml
+- name: exalsius.k3s
+  src: https://github.com/exalsius/ansible-role-k3s.git
+  version: v1.0.0  # or "main", or a commit SHA
+```
 
-Example Playbook
-----------------
+Then install the role using:
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+```bash
+ansible-galaxy install -r requirements.yml
+```
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+You can now use it in your playbooks like this:
 
-License
--------
+```yaml
+- name: Install k3s
+  hosts: all
+  become: true
+  roles:
+    - exalsius.k3s
+```
 
-BSD
+Inventory Requirements
+--------------
 
-Author Information
-------------------
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+To use this role, your inventory must include at least:
+
+- **At least one host in the `[control]` group** — this becomes the K3s control-plane node.
+- **A variable number of hosts in the `[worker]` group** — these will join as agent nodes.
+
+#### Example `inventory.ini`
+
+```ini
+[all:vars]
+ansible_user=ubuntu
+fetch_dir_path=./fetched
+
+[control]
+control-node ansible_host=1.1.1.1
+
+[worker]
+worker-node ansible_host=2.2.2.2
+```

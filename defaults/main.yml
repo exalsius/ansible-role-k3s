@@ -1,6 +1,4 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# defaults file for ansible-role-k3s
 k3s_version: "v1.32.2+k3s1"
 
 # Systemd directory, where the k3s service file will be installed
